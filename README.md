@@ -8,7 +8,9 @@ It connects to [OpenRouter.ai](https://openrouter.ai/) to provide the translatio
 
 *   **Live Translation**: See Japanese chat automatically translated to English.
 *   **Translate Your Messages**: Use the `/jp` command to translate your English (or other language) messages into Japanese before sending.
-*   **Quick Japanese to English**: Use the `/en` command to translate Japanese text into English on demand.
+*   **Quick English Translation**: Use the `/en` command to translate any language text into English on demand.
+*   **Chinese Translation with Pinyin**: Use the `/cn` command to translate text to Chinese with pronunciation guides.
+*   **Multi-language Support**: Choose up to 2 languages to display translations in simultaneously.
 *   **Formal/Casual Toggle**: Choose between formal or casual language style for all translations.
 *   **Color Customization**: Set different colors for translations based on the original chat channel.
 *   **Easy Configuration**: Simple in-game menu to set up your API key and preferences.
@@ -33,6 +35,13 @@ It connects to [OpenRouter.ai](https://openrouter.ai/) to provide the translatio
 *   Once set up, the plugin will automatically translate incoming Japanese messages in your chatbox.
 *   Translated messages will appear with a `[ChatTL]` prefix.
 *   Translations include romaji (Japanese written in Latin alphabet) in parentheses to help with pronunciation.
+*   If additional languages are enabled in settings, translations will also appear with language code prefixes like `[ES]`, `[FR]`, etc.
+
+**Multi-language Translation:**
+
+*   Go to `/transconfig` and check up to 2 languages in the "Display translations in selected languages" section.
+*   Messages will be translated to all selected languages simultaneously.
+*   Each language has its own color and language code prefix for easy identification.
 
 **Translating Your Messages (Any Language to Japanese):**
 

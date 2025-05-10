@@ -24,6 +24,27 @@ public class Configuration : IPluginConfiguration
     public bool EnableTranslation { get; set; } = true; // Global enable/disable
     public bool UseFormalLanguage { get; set; } = false; // Default to casual. True for formal, false for casual.
     
+    // Language selection for translations (maximum 2 can be enabled)
+    public Dictionary<string, bool> EnabledLanguages { get; set; } = new Dictionary<string, bool>
+    {
+        { "English", true },  // Default is enabled, but can be disabled
+        { "Indonesian", false },
+        { "Spanish", false },
+        { "Japanese", false },
+        { "Korean", false },
+        { "Chinese", false },
+        { "French", false },
+        { "German", false },
+        { "Russian", false },
+        { "Portuguese", false },
+        { "Italian", false },
+        { "Arabic", false },
+        { "Hindi", false },
+        { "Turkish", false },
+        { "Vietnamese", false },
+        { "Thai", false }
+    };
+    
     // Color settings
     public Dictionary<XivChatType, Vector4> ChatColors { get; set; } = new Dictionary<XivChatType, Vector4>
     {
@@ -57,6 +78,7 @@ public class Configuration : IPluginConfiguration
     // Special color settings for manual translation commands
     public Vector4 JpCommandColor { get; set; } = new Vector4(0.20f, 0.80f, 0.20f, 1.0f); // Green
     public Vector4 EnCommandColor { get; set; } = new Vector4(0.20f, 0.60f, 0.90f, 1.0f); // Blue
+    public Vector4 CnCommandColor { get; set; } = new Vector4(0.90f, 0.20f, 0.20f, 1.0f); // Red
     
     // Chat channel filtering
     public Dictionary<XivChatType, bool> EnabledChatTypes { get; set; } = new Dictionary<XivChatType, bool>

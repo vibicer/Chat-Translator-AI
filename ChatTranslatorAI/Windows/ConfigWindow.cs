@@ -32,8 +32,8 @@ public class ConfigWindow : Window, IDisposable
     public ConfigWindow(Plugin plugin)
         : base(
         "Chat Translator Configuration##ConfigWindow",
-        ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
-        ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.AlwaysAutoResize)
+        ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
+        ImGuiWindowFlags.AlwaysAutoResize)
     {
         this.plugin = plugin;
         this.configuration = plugin.Configuration;
@@ -123,8 +123,55 @@ public class ConfigWindow : Window, IDisposable
         }
         
         ImGui.Spacing();
-        ImGui.Separator();
+        ImGui.TextColored(headerColor, "Display translations in selected languages");
+        ImGui.TextWrapped("Select up to 2 languages to display translations in:");
+        
+        // Count how many languages are currently enabled
+        int enabledCount = configuration.EnabledLanguages.Count(lang => lang.Value);
+        bool isEnglishEnabled = configuration.EnabledLanguages["English"];
+        
+        // Display language selection in 2 columns
+        ImGui.Columns(2);
+        
+        foreach (var language in configuration.EnabledLanguages.Keys.ToList())
+        {
+            bool isEnabled = configuration.EnabledLanguages[language];
+            
+            // Other languages can be toggled if we haven't hit the limit
+            bool canEnable = isEnabled || enabledCount < 2;
+            
+            if (!canEnable)
+            {
+                ImGui.BeginDisabled();
+            }
+            
+            if (ImGui.Checkbox($"{language}", ref isEnabled))
+            {
+                configuration.EnabledLanguages[language] = isEnabled;
+                // Recalculate enabled count
+                enabledCount = configuration.EnabledLanguages.Count(lang => lang.Value);
+            }
+            
+            if (!canEnable)
+            {
+                ImGui.EndDisabled();
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Maximum 2 languages can be enabled at once.\nDisable another language first.");
+                }
+            }
+            
+            // Every other language, move to the next column
+            if ((configuration.EnabledLanguages.Keys.ToList().IndexOf(language) % 2) == 0)
+            {
+                ImGui.NextColumn();
+            }
+        }
+        
+        ImGui.Columns(1);
+        
         ImGui.Spacing();
+        ImGui.Separator();
         
         // API Settings
         ImGui.TextColored(headerColor, "API Settings");
@@ -236,6 +283,13 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.ColorEdit4("EN Command", ref enColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
         {
             configuration.EnCommandColor = enColor;
+        }
+        
+        // Color for /cn command
+        var cnColor = configuration.CnCommandColor;
+        if (ImGui.ColorEdit4("CN Command", ref cnColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        {
+            configuration.CnCommandColor = cnColor;
         }
         
         ImGui.Separator();
@@ -359,7 +413,9 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextColored(headerColor, "Features:");
         ImGui.TextWrapped("• Automatic JP → EN translation for chat messages");
         ImGui.TextWrapped("• /jp command to translate your messages into Japanese");
-        ImGui.TextWrapped("• /en command to translate Japanese text into English");
+        ImGui.TextWrapped("• /en command to translate any language into English");
+        ImGui.TextWrapped("• /cn command to translate any language into Chinese with pinyin");
+        ImGui.TextWrapped("• Multi-language translation support (up to 2 languages)");
         ImGui.TextWrapped("• Formal/casual language toggle for translations");
         ImGui.TextWrapped("• Color customization for each chat channel's translations");
         ImGui.TextWrapped("• Selective translation by chat channel type");

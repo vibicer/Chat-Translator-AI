@@ -31,6 +31,7 @@ public sealed class Plugin : IDalamudPlugin
     private const string ConfigCommandName = "/transconfig";
     private const string JpTranslateCommandName = "/jp";
     private const string EnTranslateCommandName = "/en";
+    private const string CnTranslateCommandName = "/cn";
 
     public Configuration Configuration { get; init; }
     private readonly OpenRouterTranslator _translator;
@@ -71,7 +72,12 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(EnTranslateCommandName, new CommandInfo(OnEnTranslateCommand)
         {
-            HelpMessage = "Translates a Japanese message to English. Usage: /en <Japanese message>"
+            HelpMessage = "Translates any language message to English. Usage: /en <message>"
+        });
+
+        CommandManager.AddHandler(CnTranslateCommandName, new CommandInfo(OnCnTranslateCommand)
+        {
+            HelpMessage = "Translates any language message to Chinese with pinyin. Usage: /cn <message>"
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
@@ -95,6 +101,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(ConfigCommandName);
         CommandManager.RemoveHandler(JpTranslateCommandName);
         CommandManager.RemoveHandler(EnTranslateCommandName);
+        CommandManager.RemoveHandler(CnTranslateCommandName);
         ChatGui.ChatMessage -= OnChatMessage;
         Log.Information("Chat Translator AI Plugin disposed.");
     }
@@ -211,7 +218,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (string.IsNullOrWhiteSpace(args))
         {
-            ChatGui.PrintError("Usage: /en <Japanese message>", "ChatTL");
+            ChatGui.PrintError("Usage: /en <message>", "ChatTL");
             return;
         }
 
@@ -232,7 +239,7 @@ public sealed class Plugin : IDalamudPlugin
                 textToTranslate, 
                 Configuration.OpenRouterApiKey, 
                 Configuration.OpenRouterModel,
-                "Japanese", 
+                "auto", // Changed from "Japanese" to "auto" to detect any language
                 "English",
                 Configuration.UseFormalLanguage
             );
@@ -281,6 +288,83 @@ public sealed class Plugin : IDalamudPlugin
         {
             ChatGui.PrintError($"Exception during EN translation: {ex.Message}", "ChatTL Error", (ushort)0xE05B);
             Log.Error(ex, "Exception during OnEnTranslateCommand.");
+        }
+    }
+
+    private async void OnCnTranslateCommand(string command, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+        {
+            ChatGui.PrintError("Usage: /cn <message>", "ChatTL");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Configuration.OpenRouterApiKey) || 
+            string.IsNullOrWhiteSpace(Configuration.OpenRouterModel))
+        {
+            ChatGui.PrintError("Chat Translator AI is not configured. Please set API key and model via /transconfig.", "ChatTL Error", (ushort)0xE05B);
+            return;
+        }
+
+        string textToTranslate = args;
+
+        try
+        {
+            ChatGui.Print($"Translating to Chinese with pinyin...", "ChatTL");
+            
+            string? translatedCnText = await _translator.TranslateTextAsync(
+                textToTranslate, 
+                Configuration.OpenRouterApiKey, 
+                Configuration.OpenRouterModel,
+                "auto", // Auto-detect source language
+                "Chinese",
+                Configuration.UseFormalLanguage
+            );
+
+            if (!string.IsNullOrWhiteSpace(translatedCnText) && !translatedCnText.StartsWith("Error:"))
+            {
+                Log.Debug($"Successfully translated to CN: {translatedCnText}");
+                
+                // Display the translated text (which includes pinyin from the prompt), using the configured CN command color
+                var messageBuilder = new SeStringBuilder()
+                    .AddUiForeground("[ChatTL-CN]: ", (ushort)ColorToUiForegroundId(Configuration.CnCommandColor))
+                    .AddUiForeground(translatedCnText, (ushort)ColorToUiForegroundId(Configuration.CnCommandColor));
+                ChatGui.Print(messageBuilder.Build());
+
+                // Extract and copy only the Chinese part to clipboard
+                string chineseTextOnly = translatedCnText; // Default to the full text
+                int lastOpenParenIndex = translatedCnText.LastIndexOf('(');
+
+                if (lastOpenParenIndex > 0) // Check if '(' exists and is not the first character
+                {
+                    int lastCloseParenIndex = translatedCnText.LastIndexOf(')');
+                    // Ensure the ')' comes after the '('
+                    if (lastCloseParenIndex > lastOpenParenIndex)
+                    {
+                        chineseTextOnly = translatedCnText.Substring(0, lastOpenParenIndex).Trim();
+                    }
+                }
+
+                try
+                {
+                    ImGui.SetClipboardText(chineseTextOnly);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not copy CN translation to clipboard");
+                }
+            }
+            else
+            {
+                string errorMessage = string.IsNullOrWhiteSpace(translatedCnText) ? "Translation returned empty." : translatedCnText;
+                ChatGui.PrintError($"Failed to translate to Chinese: {errorMessage}", "ChatTL Error", (ushort)0xE05B);
+                Log.Warning($"CN Translation service reported an issue: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ChatGui.PrintError($"Exception during CN translation: {ex.Message}", "ChatTL Error", (ushort)0xE05B);
+            Log.Error(ex, "Exception during OnCnTranslateCommand.");
         }
     }
 
@@ -377,21 +461,46 @@ public sealed class Plugin : IDalamudPlugin
 
                 if (!string.IsNullOrWhiteSpace(translatedText) && !translatedText.StartsWith("Error:"))
                 {
-                    // Get the appropriate color for this chat type
-                    Vector4 textColor = new Vector4(1, 1, 1, 1); // Default white
-                    if (Configuration.ChatColors.TryGetValue(type, out Vector4 channelColor))
+                    // Moved the English translation display to the conditional blocks above
+                    Log.Debug($"Translation successful: {translatedText}");
+                    
+                    // Process additional language translations if any are enabled
+                    bool needsEnglishTranslation = Configuration.EnabledLanguages.TryGetValue("English", out bool isEnglishEnabled) && isEnglishEnabled;
+                    
+                    // Only continue with English translation if it's enabled
+                    if (needsEnglishTranslation)
                     {
-                        textColor = channelColor;
+                        // Get the appropriate color for this chat type
+                        Vector4 textColor = new Vector4(1, 1, 1, 1); // Default white
+                        if (Configuration.ChatColors.TryGetValue(type, out Vector4 channelColor))
+                        {
+                            textColor = channelColor;
+                        }
+                        
+                        // Create a colored message
+                        var translatedMessage = new SeStringBuilder()
+                            .AddUiForeground($"[EN][{senderText}]: ", (ushort)ColorToUiForegroundId(textColor))
+                            .AddUiForeground(translatedText, (ushort)ColorToUiForegroundId(textColor))
+                            .Build();
+
+                        ChatGui.Print(translatedMessage, "ChatTL");
                     }
                     
-                    // Create a colored message
-                    var translatedMessage = new SeStringBuilder()
-                        .AddUiForeground($"[{senderText}]: ", (ushort)ColorToUiForegroundId(textColor))
-                        .AddUiForeground(translatedText, (ushort)ColorToUiForegroundId(textColor))
-                        .Build();
-
-                    ChatGui.Print(translatedMessage, "ChatTL");
-                    Log.Debug($"Translation successful: {translatedText}");
+                    // Process additional language translations (any enabled language)
+                    foreach (var languagePair in Configuration.EnabledLanguages)
+                    {
+                        string language = languagePair.Key;
+                        bool isEnabled = languagePair.Value;
+                        
+                        // Skip languages that aren't enabled and skip English as we already handled it
+                        if (!isEnabled || language == "English")
+                        {
+                            continue;
+                        }
+                        
+                        // Translate to the selected language
+                        TranslateToLanguage(messageText, senderText, type, language);
+                    }
                 }
                 else if (translatedText != null)
                 {
@@ -553,5 +662,101 @@ public sealed class Plugin : IDalamudPlugin
         
         // Default
         return 0; // Default color
+    }
+
+    // Helper method for translating to a specific language
+    private void TranslateToLanguage(string messageText, string senderText, XivChatType type, string language)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                // Get language code for display
+                string langCode = GetLanguageCode(language);
+                
+                string? translatedText = await _translator.TranslateTextAsync(
+                    messageText,
+                    Configuration.OpenRouterApiKey,
+                    Configuration.OpenRouterModel,
+                    "auto", // Auto-detect source language
+                    language,
+                    Configuration.UseFormalLanguage
+                );
+
+                if (!string.IsNullOrWhiteSpace(translatedText) && !translatedText.StartsWith("Error:"))
+                {
+                    // Use a specific color based on the language
+                    Vector4 languageColor = GetLanguageColor(language);
+                    
+                    // Create a colored message with language indicator
+                    var translatedMessage = new SeStringBuilder()
+                        .AddUiForeground($"[{langCode}][{senderText}]: ", (ushort)ColorToUiForegroundId(languageColor))
+                        .AddUiForeground(translatedText, (ushort)ColorToUiForegroundId(languageColor))
+                        .Build();
+
+                    ChatGui.Print(translatedMessage, "ChatTL");
+                    Log.Debug($"{language} translation successful: {translatedText}");
+                }
+                else if (translatedText != null)
+                {
+                    Log.Warning($"{language} translation service reported an issue: {translatedText}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Exception during {language} translation task.");
+            }
+        });
+    }
+    
+    // Helper method to get a language code for display
+    private string GetLanguageCode(string language)
+    {
+        // Return standard 2-3 letter codes for each language
+        switch (language)
+        {
+            case "English": return "EN";
+            case "Indonesian": return "ID";
+            case "Spanish": return "ES";
+            case "Japanese": return "JP";
+            case "Korean": return "KR";
+            case "Chinese": return "CN";
+            case "French": return "FR";
+            case "German": return "DE";
+            case "Russian": return "RU";
+            case "Portuguese": return "PT";
+            case "Italian": return "IT";
+            case "Arabic": return "AR";
+            case "Hindi": return "HI";
+            case "Turkish": return "TR";
+            case "Vietnamese": return "VI";
+            case "Thai": return "TH";
+            default: return language.Substring(0, 2).ToUpper(); // Fallback to first 2 letters
+        }
+    }
+    
+    // Helper method to get a color for each language
+    private Vector4 GetLanguageColor(string language)
+    {
+        // Return a unique color for each language
+        switch (language)
+        {
+            case "Indonesian": return new Vector4(1.0f, 0.7f, 0.4f, 1.0f); // Orange
+            case "Spanish": return new Vector4(0.9f, 0.2f, 0.2f, 1.0f); // Red
+            case "Japanese": return new Vector4(0.9f, 0.4f, 0.7f, 1.0f); // Pink
+            case "Korean": return new Vector4(0.3f, 0.6f, 0.9f, 1.0f); // Blue
+            case "Chinese": return new Vector4(0.8f, 0.2f, 0.2f, 1.0f); // Red
+            case "French": return new Vector4(0.1f, 0.3f, 0.8f, 1.0f); // Blue
+            case "German": return new Vector4(0.3f, 0.3f, 0.3f, 1.0f); // Dark gray
+            case "Russian": return new Vector4(0.7f, 0.0f, 0.0f, 1.0f); // Dark red
+            case "Portuguese": return new Vector4(0.0f, 0.8f, 0.4f, 1.0f); // Green
+            case "Italian": return new Vector4(0.0f, 0.7f, 0.2f, 1.0f); // Green
+            case "Arabic": return new Vector4(0.0f, 0.5f, 0.3f, 1.0f); // Dark green
+            case "Hindi": return new Vector4(1.0f, 0.5f, 0.0f, 1.0f); // Orange
+            case "Turkish": return new Vector4(0.9f, 0.0f, 0.0f, 1.0f); // Red
+            case "Vietnamese": return new Vector4(0.9f, 0.8f, 0.0f, 1.0f); // Yellow
+            case "Thai": return new Vector4(0.0f, 0.0f, 0.8f, 1.0f); // Blue
+            default: return new Vector4(0.7f, 0.7f, 0.7f, 1.0f); // Gray (fallback)
+        }
     }
 }
