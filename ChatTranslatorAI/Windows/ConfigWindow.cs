@@ -73,6 +73,12 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.EndTabItem();
             }
             
+            if (ImGui.BeginTabItem("Colors"))
+            {
+                DrawColorSettings();
+                ImGui.EndTabItem();
+            }
+            
             if (ImGui.BeginTabItem("About"))
             {
                 DrawAboutTab();
@@ -110,10 +116,10 @@ public class ConfigWindow : Window, IDisposable
             configuration.EnableTranslation = enableTranslation;
         }
         
-        var translateOwnMessages = configuration.TranslateOwnMessages;
-        if (ImGui.Checkbox("Translate My Messages", ref translateOwnMessages))
+        var useFormalLanguage = configuration.UseFormalLanguage;
+        if (ImGui.Checkbox("Use Formal Language", ref useFormalLanguage))
         {
-            configuration.TranslateOwnMessages = translateOwnMessages;
+            configuration.UseFormalLanguage = useFormalLanguage;
         }
         
         ImGui.Spacing();
@@ -210,6 +216,133 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Columns(1);
     }
     
+    private void DrawColorSettings()
+    {
+        ImGui.TextColored(headerColor, "Translation Color Settings");
+        ImGui.Spacing();
+        
+        ImGui.TextColored(headerColor, "Command Colors");
+        ImGui.Spacing();
+        
+        // Color for /jp command
+        var jpColor = configuration.JpCommandColor;
+        if (ImGui.ColorEdit4("JP Command", ref jpColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        {
+            configuration.JpCommandColor = jpColor;
+        }
+        
+        // Color for /en command
+        var enColor = configuration.EnCommandColor;
+        if (ImGui.ColorEdit4("EN Command", ref enColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        {
+            configuration.EnCommandColor = enColor;
+        }
+        
+        ImGui.Separator();
+        ImGui.Spacing();
+        
+        ImGui.TextColored(headerColor, "Chat Channel Colors");
+        ImGui.TextWrapped("Set the color for translations based on the original message's channel:");
+        ImGui.Spacing();
+        
+        // Common channels first
+        ImGui.TextColored(headerColor, "Common Channels");
+        ImGui.Columns(2);
+        
+        for (int i = 0; i < commonChatTypes.Length; i++)
+        {
+            XivChatType chatType = commonChatTypeValues[i];
+            
+            // Get current color or default white if not found
+            Vector4 currentColor = new Vector4(1, 1, 1, 1);
+            if (configuration.ChatColors.TryGetValue(chatType, out Vector4 color))
+            {
+                currentColor = color;
+            }
+            
+            // Color picker
+            if (ImGui.ColorEdit4($"##Color{(int)chatType}", ref currentColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+            {
+                configuration.ChatColors[chatType] = currentColor;
+            }
+            
+            // Channel name next to the color picker
+            ImGui.SameLine();
+            ImGui.Text(commonChatTypes[i]);
+            
+            if (i % 2 == 0)
+                ImGui.NextColumn();
+        }
+        
+        ImGui.Columns(1);
+        ImGui.Separator();
+        
+        // LinkShells
+        ImGui.TextColored(headerColor, "LinkShells");
+        ImGui.Columns(4);
+        
+        for (int i = 1; i <= 8; i++)
+        {
+            XivChatType lsType = (XivChatType)Enum.Parse(typeof(XivChatType), $"Ls{i}");
+            
+            // Get current color or default light green if not found
+            Vector4 currentColor = new Vector4(0.5f, 0.8f, 0.5f, 1.0f);
+            if (configuration.ChatColors.TryGetValue(lsType, out Vector4 color))
+            {
+                currentColor = color;
+            }
+            
+            // Color picker
+            if (ImGui.ColorEdit4($"##ColorLS{i}", ref currentColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+            {
+                configuration.ChatColors[lsType] = currentColor;
+            }
+            
+            // Channel name next to the color picker
+            ImGui.SameLine();
+            ImGui.Text($"LS {i}");
+            
+            ImGui.NextColumn();
+        }
+        
+        ImGui.Columns(1);
+        ImGui.Spacing();
+        
+        // Cross-world LinkShells
+        ImGui.TextColored(headerColor, "Cross-world LinkShells");
+        ImGui.Columns(4);
+        
+        for (int i = 1; i <= 8; i++)
+        {
+            XivChatType cwlsType = (XivChatType)Enum.Parse(typeof(XivChatType), $"CrossLinkShell{i}");
+            
+            // Get current color or default light cyan if not found
+            Vector4 currentColor = new Vector4(0.5f, 0.8f, 0.8f, 1.0f);
+            if (configuration.ChatColors.TryGetValue(cwlsType, out Vector4 color))
+            {
+                currentColor = color;
+            }
+            
+            // Color picker
+            if (ImGui.ColorEdit4($"##ColorCWLS{i}", ref currentColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+            {
+                configuration.ChatColors[cwlsType] = currentColor;
+            }
+            
+            // Channel name next to the color picker
+            ImGui.SameLine();
+            ImGui.Text($"CWLS {i}");
+            
+            ImGui.NextColumn();
+        }
+        
+        ImGui.Columns(1);
+        
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.TextWrapped("Note: Color settings are applied to the translated text only, not to the original messages.");
+    }
+    
     private void DrawAboutTab()
     {
         ImGui.TextColored(headerColor, "Chat Translator AI");
@@ -222,5 +355,13 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextWrapped("To use this plugin, you need an OpenRouter API key. You can get one by signing up at https://openrouter.ai/");
         ImGui.Spacing();
         ImGui.TextWrapped("The plugin works by intercepting chat messages, detecting Japanese text, and translating it using the selected AI model.");
+        ImGui.Spacing();
+        ImGui.TextColored(headerColor, "Features:");
+        ImGui.TextWrapped("• Automatic JP → EN translation for chat messages");
+        ImGui.TextWrapped("• /jp command to translate your messages into Japanese");
+        ImGui.TextWrapped("• /en command to translate Japanese text into English");
+        ImGui.TextWrapped("• Formal/casual language toggle for translations");
+        ImGui.TextWrapped("• Color customization for each chat channel's translations");
+        ImGui.TextWrapped("• Selective translation by chat channel type");
     }
 }

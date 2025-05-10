@@ -12,6 +12,7 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ImGuiNET;
+using System.Numerics;
 
 namespace ChatTranslatorAI;
 
@@ -29,6 +30,7 @@ public sealed class Plugin : IDalamudPlugin
     private const string CommandName = "/pmycommand";
     private const string ConfigCommandName = "/transconfig";
     private const string JpTranslateCommandName = "/jp";
+    private const string EnTranslateCommandName = "/en";
 
     public Configuration Configuration { get; init; }
     private readonly OpenRouterTranslator _translator;
@@ -67,6 +69,11 @@ public sealed class Plugin : IDalamudPlugin
             HelpMessage = "Translates your English message to Japanese and sends it. Usage: /jp <message> or /jp <channel> <message> (e.g., /jp say Hello or /jp party Hello)"
         });
 
+        CommandManager.AddHandler(EnTranslateCommandName, new CommandInfo(OnEnTranslateCommand)
+        {
+            HelpMessage = "Translates a Japanese message to English. Usage: /en <Japanese message>"
+        });
+
         PluginInterface.UiBuilder.Draw += DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
@@ -87,6 +94,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         CommandManager.RemoveHandler(ConfigCommandName);
         CommandManager.RemoveHandler(JpTranslateCommandName);
+        CommandManager.RemoveHandler(EnTranslateCommandName);
         ChatGui.ChatMessage -= OnChatMessage;
         Log.Information("Chat Translator AI Plugin disposed.");
     }
@@ -143,7 +151,8 @@ public sealed class Plugin : IDalamudPlugin
                 Configuration.OpenRouterApiKey, 
                 Configuration.OpenRouterModel,
                 "auto", // Auto-detect source language
-                "Japanese"
+                "Japanese",
+                Configuration.UseFormalLanguage
             );
 
             if (!string.IsNullOrWhiteSpace(translatedJpText) && !translatedJpText.StartsWith("Error:"))
@@ -166,9 +175,10 @@ public sealed class Plugin : IDalamudPlugin
                     }
                 }
                 
-                // Display the translated text with romaji if available
+                // Display the translated text with romaji if available, using the configured JP command color
                 var messageBuilder = new SeStringBuilder()
-                    .AddText($"➤ {displayText}");
+                    .AddUiForeground("➤ ", (ushort)ColorToUiForegroundId(Configuration.JpCommandColor))
+                    .AddUiForeground(displayText, (ushort)ColorToUiForegroundId(Configuration.JpCommandColor));
                 var message = messageBuilder.Build();
                 
                 ChatGui.Print(message);
@@ -194,6 +204,83 @@ public sealed class Plugin : IDalamudPlugin
         {
             ChatGui.PrintError($"Exception during translation: {ex.Message}", "ChatTL Error", (ushort)0xE05B);
             Log.Error(ex, "Exception during OnJpTranslateCommand.");
+        }
+    }
+
+    private async void OnEnTranslateCommand(string command, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+        {
+            ChatGui.PrintError("Usage: /en <Japanese message>", "ChatTL");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Configuration.OpenRouterApiKey) || 
+            string.IsNullOrWhiteSpace(Configuration.OpenRouterModel))
+        {
+            ChatGui.PrintError("Chat Translator AI is not configured. Please set API key and model via /transconfig.", "ChatTL Error", (ushort)0xE05B);
+            return;
+        }
+
+        string textToTranslate = args;
+
+        try
+        {
+            ChatGui.Print($"Translating to English...", "ChatTL");
+            
+            string? translatedEnText = await _translator.TranslateTextAsync(
+                textToTranslate, 
+                Configuration.OpenRouterApiKey, 
+                Configuration.OpenRouterModel,
+                "Japanese", 
+                "English",
+                Configuration.UseFormalLanguage
+            );
+
+            if (!string.IsNullOrWhiteSpace(translatedEnText) && !translatedEnText.StartsWith("Error:"))
+            {
+                Log.Debug($"Successfully translated to EN: {translatedEnText}");
+                
+                // Display the translated text (which includes romaji from the prompt), using the configured EN command color
+                var messageBuilder = new SeStringBuilder()
+                    .AddUiForeground("[ChatTL-EN]: ", (ushort)ColorToUiForegroundId(Configuration.EnCommandColor))
+                    .AddUiForeground(translatedEnText, (ushort)ColorToUiForegroundId(Configuration.EnCommandColor));
+                ChatGui.Print(messageBuilder.Build());
+
+                // Extract and copy only the English part to clipboard
+                string englishTextOnly = translatedEnText; // Default to the full text
+                int lastOpenParenIndex = translatedEnText.LastIndexOf('(');
+
+                if (lastOpenParenIndex > 0) // Check if '(' exists and is not the first character
+                {
+                    int lastCloseParenIndex = translatedEnText.LastIndexOf(')');
+                    // Ensure the ')' comes after the '('
+                    if (lastCloseParenIndex > lastOpenParenIndex)
+                    {
+                        englishTextOnly = translatedEnText.Substring(0, lastOpenParenIndex).Trim();
+                    }
+                }
+
+                try
+                {
+                    ImGui.SetClipboardText(englishTextOnly);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not copy EN translation to clipboard");
+                }
+            }
+            else
+            {
+                string errorMessage = string.IsNullOrWhiteSpace(translatedEnText) ? "Translation returned empty." : translatedEnText;
+                ChatGui.PrintError($"Failed to translate to English: {errorMessage}", "ChatTL Error", (ushort)0xE05B);
+                Log.Warning($"EN Translation service reported an issue: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ChatGui.PrintError($"Exception during EN translation: {ex.Message}", "ChatTL Error", (ushort)0xE05B);
+            Log.Error(ex, "Exception during OnEnTranslateCommand.");
         }
     }
 
@@ -244,12 +331,26 @@ public sealed class Plugin : IDalamudPlugin
         string messageText = message.TextValue;
         string senderText = sender.TextValue;
 
+        // ---- START DEBUG LOGGING ----
+        Log.Debug($"OnChatMessage triggered for type: {type}");
+        Log.Debug($"Received sender.TextValue: '{senderText}'");
+        if (ClientState.LocalPlayer != null)
+        {
+            Log.Debug($"ClientState.LocalPlayer.Name.TextValue: '{ClientState.LocalPlayer.Name.TextValue}'");
+        }
+        else
+        {
+            Log.Debug("ClientState.LocalPlayer is null.");
+        }
+        Log.Debug($"IsSelfMessage check result for '{senderText}': {IsSelfMessage(senderText)}");
+        // ---- END DEBUG LOGGING ----
+
         if (messageText.Contains("[ChatTL]") || messageText.Contains("[TR]:"))
         {
             return;
         }
 
-        if (IsSelfMessage(senderText) && !Configuration.TranslateOwnMessages)
+        if (IsSelfMessage(senderText))
         {
             return;
         }
@@ -270,14 +371,23 @@ public sealed class Plugin : IDalamudPlugin
                     Configuration.OpenRouterApiKey, 
                     Configuration.OpenRouterModel,
                     "Japanese",
-                    "English"
+                    "English",
+                    Configuration.UseFormalLanguage
                 );
 
                 if (!string.IsNullOrWhiteSpace(translatedText) && !translatedText.StartsWith("Error:"))
                 {
+                    // Get the appropriate color for this chat type
+                    Vector4 textColor = new Vector4(1, 1, 1, 1); // Default white
+                    if (Configuration.ChatColors.TryGetValue(type, out Vector4 channelColor))
+                    {
+                        textColor = channelColor;
+                    }
+                    
+                    // Create a colored message
                     var translatedMessage = new SeStringBuilder()
-                        .AddText($"[{senderText}]: ")
-                        .AddText(translatedText)
+                        .AddUiForeground($"[{senderText}]: ", (ushort)ColorToUiForegroundId(textColor))
+                        .AddUiForeground(translatedText, (ushort)ColorToUiForegroundId(textColor))
                         .Build();
 
                     ChatGui.Print(translatedMessage, "ChatTL");
@@ -359,11 +469,13 @@ public sealed class Plugin : IDalamudPlugin
 
     private bool IsSelfMessage(string senderName)
     {
-        if (ClientState.LocalPlayer == null)
+        if (ClientState.LocalPlayer == null || string.IsNullOrEmpty(ClientState.LocalPlayer.Name?.TextValue))
         {
             return false;
         }
-        return senderName == ClientState.LocalPlayer.Name.TextValue;
+        // Check if the received senderName ends with the LocalPlayer's name.
+        // This handles cases where prefixes (like party icons) are added to the sender's name in chat.
+        return senderName.EndsWith(ClientState.LocalPlayer.Name.TextValue, StringComparison.Ordinal);
     }
 
     private bool ContainsJapanese(string text)
@@ -388,4 +500,58 @@ public sealed class Plugin : IDalamudPlugin
 
     public void ToggleConfigUI() => ConfigWindow.Toggle();
     public void ToggleMainUI() => MainWindow.Toggle();
+
+    // Helper method to convert Vector4 color to UI foreground ID
+    private uint ColorToUiForegroundId(Vector4 color)
+    {
+        // FFXIV UI colors are represented as 0xAABBGGRR (ABGR) in hex
+        // This method converts our RGBA Vector4 to the closest UI foreground ID
+        
+        // Convert 0-1 range to 0-255 range
+        byte r = (byte)(color.X * 255);
+        byte g = (byte)(color.Y * 255);
+        byte b = (byte)(color.Z * 255);
+        
+        // For simplicity, we'll map to one of the 16 standard colors
+        // This can be expanded to more sophisticated color matching if needed
+        return GetClosestColorId(r, g, b);
+    }
+    
+    // Simple mapping to standard FFXIV colors
+    private uint GetClosestColorId(byte r, byte g, byte b)
+    {
+        // Basic color table of common FFXIV chat colors mapped to their UI foreground IDs
+        // This is a simplified approach - a more comprehensive solution would use 
+        // actual distance calculations between colors
+        
+        // Whites and Grays
+        if (r > 200 && g > 200 && b > 200) return 1; // White
+        if (r > 150 && g > 150 && b > 150) return 2; // Light Gray
+        
+        // Blues
+        if (b > 200 && r < 100 && g < 100) return 37; // Dark Blue
+        if (b > 180 && r < 150 && g > 150) return 506; // Light Blue
+        if (b > 180 && g > 100 && r < 100) return 45; // Blue
+        
+        // Greens
+        if (g > 200 && r < 100 && b < 100) return 42; // Green
+        if (g > 180 && r > 180 && b < 100) return 55; // Yellow-Green
+        
+        // Reds and Pinks
+        if (r > 200 && g < 100 && b < 100) return 14; // Red
+        if (r > 200 && g < 150 && b > 150) return 541; // Pink
+        
+        // Yellows and Oranges
+        if (r > 200 && g > 200 && b < 100) return 24; // Yellow
+        if (r > 200 && g > 130 && b < 100) return 34; // Orange
+        
+        // Purples
+        if (r > 150 && g < 100 && b > 150) return 65; // Purple
+        
+        // Cyans
+        if (g > 150 && b > 150 && r < 100) return 52; // Cyan
+        
+        // Default
+        return 0; // Default color
+    }
 }

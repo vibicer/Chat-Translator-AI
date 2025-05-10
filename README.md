@@ -8,6 +8,9 @@ It connects to [OpenRouter.ai](https://openrouter.ai/) to provide the translatio
 
 *   **Live Translation**: See Japanese chat automatically translated to English.
 *   **Translate Your Messages**: Use the `/jp` command to translate your English (or other language) messages into Japanese before sending.
+*   **Quick Japanese to English**: Use the `/en` command to translate Japanese text into English on demand.
+*   **Formal/Casual Toggle**: Choose between formal or casual language style for all translations.
+*   **Color Customization**: Set different colors for translations based on the original chat channel.
 *   **Easy Configuration**: Simple in-game menu to set up your API key and preferences.
 *   **Flexible Model Choice**: Works with various AI models available on OpenRouter.
 

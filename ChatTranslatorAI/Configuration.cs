@@ -4,6 +4,7 @@ using System;
 using Dalamud.Plugin.Services;  // Added for IDalamudPluginInterface
 using System.Collections.Generic;
 using Dalamud.Game.Text;
+using System.Numerics; // For Vector4 (colors)
 
 namespace ChatTranslatorAI;
 
@@ -21,7 +22,41 @@ public class Configuration : IPluginConfiguration
 
     // Phase 2 - Refinements & Enhancements
     public bool EnableTranslation { get; set; } = true; // Global enable/disable
-    public bool TranslateOwnMessages { get; set; } = false; // Whether to translate messages from self
+    public bool UseFormalLanguage { get; set; } = false; // Default to casual. True for formal, false for casual.
+    
+    // Color settings
+    public Dictionary<XivChatType, Vector4> ChatColors { get; set; } = new Dictionary<XivChatType, Vector4>
+    {
+        { XivChatType.Say, new Vector4(0.70f, 0.70f, 0.70f, 1.0f) },         // Light gray
+        { XivChatType.Party, new Vector4(0.20f, 0.65f, 0.90f, 1.0f) },        // Blue
+        { XivChatType.TellIncoming, new Vector4(0.90f, 0.60f, 0.80f, 1.0f) }, // Pink
+        { XivChatType.Shout, new Vector4(1.00f, 0.65f, 0.20f, 1.0f) },        // Orange
+        { XivChatType.Yell, new Vector4(0.95f, 0.80f, 0.20f, 1.0f) },         // Yellow
+        { XivChatType.FreeCompany, new Vector4(0.60f, 0.90f, 0.60f, 1.0f) },  // Green
+        { XivChatType.NoviceNetwork, new Vector4(0.80f, 0.80f, 0.50f, 1.0f) },// Tan
+        // Default colors for LinkShells (light green variants)
+        { XivChatType.Ls1, new Vector4(0.50f, 0.80f, 0.50f, 1.0f) },
+        { XivChatType.Ls2, new Vector4(0.52f, 0.82f, 0.52f, 1.0f) },
+        { XivChatType.Ls3, new Vector4(0.54f, 0.84f, 0.54f, 1.0f) },
+        { XivChatType.Ls4, new Vector4(0.56f, 0.86f, 0.56f, 1.0f) },
+        { XivChatType.Ls5, new Vector4(0.58f, 0.88f, 0.58f, 1.0f) },
+        { XivChatType.Ls6, new Vector4(0.60f, 0.90f, 0.60f, 1.0f) },
+        { XivChatType.Ls7, new Vector4(0.62f, 0.92f, 0.62f, 1.0f) },
+        { XivChatType.Ls8, new Vector4(0.64f, 0.94f, 0.64f, 1.0f) },
+        // Default colors for CrossLinkShells (light cyan variants)
+        { XivChatType.CrossLinkShell1, new Vector4(0.50f, 0.80f, 0.80f, 1.0f) },
+        { XivChatType.CrossLinkShell2, new Vector4(0.52f, 0.82f, 0.82f, 1.0f) },
+        { XivChatType.CrossLinkShell3, new Vector4(0.54f, 0.84f, 0.84f, 1.0f) },
+        { XivChatType.CrossLinkShell4, new Vector4(0.56f, 0.86f, 0.86f, 1.0f) },
+        { XivChatType.CrossLinkShell5, new Vector4(0.58f, 0.88f, 0.88f, 1.0f) },
+        { XivChatType.CrossLinkShell6, new Vector4(0.60f, 0.90f, 0.90f, 1.0f) },
+        { XivChatType.CrossLinkShell7, new Vector4(0.62f, 0.92f, 0.92f, 1.0f) },
+        { XivChatType.CrossLinkShell8, new Vector4(0.64f, 0.94f, 0.94f, 1.0f) },
+    };
+    
+    // Special color settings for manual translation commands
+    public Vector4 JpCommandColor { get; set; } = new Vector4(0.20f, 0.80f, 0.20f, 1.0f); // Green
+    public Vector4 EnCommandColor { get; set; } = new Vector4(0.20f, 0.60f, 0.90f, 1.0f); // Blue
     
     // Chat channel filtering
     public Dictionary<XivChatType, bool> EnabledChatTypes { get; set; } = new Dictionary<XivChatType, bool>
