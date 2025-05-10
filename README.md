@@ -9,7 +9,8 @@ It connects to [OpenRouter.ai](https://openrouter.ai/) to provide the translatio
 *   **Live Translation**: See Japanese chat automatically translated to English.
 *   **Translate Your Messages**: Use the `/jp` command to translate your English (or other language) messages into Japanese before sending.
 *   **Quick English Translation**: Use the `/en` command to translate any language text into English on demand.
-*   **Chinese Translation with Pinyin**: Use the `/cn` command to translate text to Chinese with pronunciation guides.
+*   **Chinese Translation with Pinyin**: Use the `/cn` command to translate text to Chinese Simplified with pronunciation guides.
+*   **Traditional Chinese**: Use the `/cnt` command to translate text to Chinese Traditional with pinyin.
 *   **Multi-language Support**: Choose up to 2 languages to display translations in simultaneously.
 *   **Formal/Casual Toggle**: Choose between formal or casual language style for all translations.
 *   **Color Customization**: Set different colors for translations based on the original chat channel.

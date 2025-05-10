@@ -292,6 +292,13 @@ public class ConfigWindow : Window, IDisposable
             configuration.CnCommandColor = cnColor;
         }
         
+        // Color for /cnt command
+        var cntColor = configuration.CntCommandColor;
+        if (ImGui.ColorEdit4("CNT Command", ref cntColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        {
+            configuration.CntCommandColor = cntColor;
+        }
+        
         ImGui.Separator();
         ImGui.Spacing();
         
@@ -414,7 +421,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextWrapped("• Automatic JP → EN translation for chat messages");
         ImGui.TextWrapped("• /jp command to translate your messages into Japanese");
         ImGui.TextWrapped("• /en command to translate any language into English");
-        ImGui.TextWrapped("• /cn command to translate any language into Chinese with pinyin");
+        ImGui.TextWrapped("• /cn command to translate any language into Chinese (Simplified) with pinyin");
+        ImGui.TextWrapped("• /cnt command to translate any language into Chinese (Traditional) with pinyin");
         ImGui.TextWrapped("• Multi-language translation support (up to 2 languages)");
         ImGui.TextWrapped("• Formal/casual language toggle for translations");
         ImGui.TextWrapped("• Color customization for each chat channel's translations");

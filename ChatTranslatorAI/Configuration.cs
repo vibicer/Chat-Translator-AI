@@ -33,6 +33,7 @@ public class Configuration : IPluginConfiguration
         { "Japanese", false },
         { "Korean", false },
         { "Chinese", false },
+        { "ChineseTraditional", false },
         { "French", false },
         { "German", false },
         { "Russian", false },
@@ -79,6 +80,7 @@ public class Configuration : IPluginConfiguration
     public Vector4 JpCommandColor { get; set; } = new Vector4(0.20f, 0.80f, 0.20f, 1.0f); // Green
     public Vector4 EnCommandColor { get; set; } = new Vector4(0.20f, 0.60f, 0.90f, 1.0f); // Blue
     public Vector4 CnCommandColor { get; set; } = new Vector4(0.90f, 0.20f, 0.20f, 1.0f); // Red
+    public Vector4 CntCommandColor { get; set; } = new Vector4(0.80f, 0.30f, 0.30f, 1.0f); // Darker Red
     
     // Chat channel filtering
     public Dictionary<XivChatType, bool> EnabledChatTypes { get; set; } = new Dictionary<XivChatType, bool>

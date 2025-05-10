@@ -66,9 +66,18 @@ public class OpenRouterTranslator
                  sourceLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase)) && 
                  targetLanguage.Equals("Chinese", StringComparison.OrdinalIgnoreCase))
         {
-            // Translation to Chinese with pinyin
+            // Translation to Chinese Simplified with pinyin
             string formalityCn = useFormalLanguage ? "formal" : "casual/conversational";
             systemPrompt = $"You are a direct translator to Chinese (Simplified). Detect the input language and translate it to {formalityCn} Chinese. Include pinyin in parentheses after the translation. Format as: 'Chinese translation (pinyin)'. Return ONLY the translated text with pinyin, no explanations or additional context.";
+        }
+        else if ((sourceLanguage.Equals("Japanese", StringComparison.OrdinalIgnoreCase) || 
+                 sourceLanguage.Equals("English", StringComparison.OrdinalIgnoreCase) || 
+                 sourceLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase)) && 
+                 targetLanguage.Equals("ChineseTraditional", StringComparison.OrdinalIgnoreCase))
+        {
+            // Translation to Chinese Traditional with pinyin
+            string formalityCnt = useFormalLanguage ? "formal" : "casual/conversational";
+            systemPrompt = $"You are a direct translator to Chinese (Traditional). Detect the input language and translate it to {formalityCnt} Traditional Chinese characters. Include pinyin in parentheses after the translation. Format as: 'Traditional Chinese translation (pinyin)'. Return ONLY the translated text with pinyin, no explanations or additional context.";
         }
         else if ((sourceLanguage.Equals("Japanese", StringComparison.OrdinalIgnoreCase) || 
                  sourceLanguage.Equals("English", StringComparison.OrdinalIgnoreCase) || 

@@ -32,6 +32,7 @@ public sealed class Plugin : IDalamudPlugin
     private const string JpTranslateCommandName = "/jp";
     private const string EnTranslateCommandName = "/en";
     private const string CnTranslateCommandName = "/cn";
+    private const string CntTranslateCommandName = "/cnt";
 
     public Configuration Configuration { get; init; }
     private readonly OpenRouterTranslator _translator;
@@ -77,7 +78,12 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CnTranslateCommandName, new CommandInfo(OnCnTranslateCommand)
         {
-            HelpMessage = "Translates any language message to Chinese with pinyin. Usage: /cn <message>"
+            HelpMessage = "Translates any language message to Chinese Simplified with pinyin. Usage: /cn <message>"
+        });
+
+        CommandManager.AddHandler(CntTranslateCommandName, new CommandInfo(OnCntTranslateCommand)
+        {
+            HelpMessage = "Translates any language message to Chinese Traditional with pinyin. Usage: /cnt <message>"
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
@@ -102,6 +108,7 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(JpTranslateCommandName);
         CommandManager.RemoveHandler(EnTranslateCommandName);
         CommandManager.RemoveHandler(CnTranslateCommandName);
+        CommandManager.RemoveHandler(CntTranslateCommandName);
         ChatGui.ChatMessage -= OnChatMessage;
         Log.Information("Chat Translator AI Plugin disposed.");
     }
@@ -365,6 +372,83 @@ public sealed class Plugin : IDalamudPlugin
         {
             ChatGui.PrintError($"Exception during CN translation: {ex.Message}", "ChatTL Error", (ushort)0xE05B);
             Log.Error(ex, "Exception during OnCnTranslateCommand.");
+        }
+    }
+
+    private async void OnCntTranslateCommand(string command, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+        {
+            ChatGui.PrintError("Usage: /cnt <message>", "ChatTL");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Configuration.OpenRouterApiKey) || 
+            string.IsNullOrWhiteSpace(Configuration.OpenRouterModel))
+        {
+            ChatGui.PrintError("Chat Translator AI is not configured. Please set API key and model via /transconfig.", "ChatTL Error", (ushort)0xE05B);
+            return;
+        }
+
+        string textToTranslate = args;
+
+        try
+        {
+            ChatGui.Print($"Translating to Chinese Traditional with pinyin...", "ChatTL");
+            
+            string? translatedCntText = await _translator.TranslateTextAsync(
+                textToTranslate, 
+                Configuration.OpenRouterApiKey, 
+                Configuration.OpenRouterModel,
+                "auto", // Auto-detect source language
+                "ChineseTraditional",
+                Configuration.UseFormalLanguage
+            );
+
+            if (!string.IsNullOrWhiteSpace(translatedCntText) && !translatedCntText.StartsWith("Error:"))
+            {
+                Log.Debug($"Successfully translated to CNT: {translatedCntText}");
+                
+                // Display the translated text (which includes pinyin from the prompt), using the configured CNT command color
+                var messageBuilder = new SeStringBuilder()
+                    .AddUiForeground("[ChatTL-CNT]: ", (ushort)ColorToUiForegroundId(Configuration.CntCommandColor))
+                    .AddUiForeground(translatedCntText, (ushort)ColorToUiForegroundId(Configuration.CntCommandColor));
+                ChatGui.Print(messageBuilder.Build());
+
+                // Extract and copy only the Chinese part to clipboard
+                string chineseTextOnly = translatedCntText; // Default to the full text
+                int lastOpenParenIndex = translatedCntText.LastIndexOf('(');
+
+                if (lastOpenParenIndex > 0) // Check if '(' exists and is not the first character
+                {
+                    int lastCloseParenIndex = translatedCntText.LastIndexOf(')');
+                    // Ensure the ')' comes after the '('
+                    if (lastCloseParenIndex > lastOpenParenIndex)
+                    {
+                        chineseTextOnly = translatedCntText.Substring(0, lastOpenParenIndex).Trim();
+                    }
+                }
+
+                try
+                {
+                    ImGui.SetClipboardText(chineseTextOnly);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not copy CNT translation to clipboard");
+                }
+            }
+            else
+            {
+                string errorMessage = string.IsNullOrWhiteSpace(translatedCntText) ? "Translation returned empty." : translatedCntText;
+                ChatGui.PrintError($"Failed to translate to Chinese Traditional: {errorMessage}", "ChatTL Error", (ushort)0xE05B);
+                Log.Warning($"CNT Translation service reported an issue: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ChatGui.PrintError($"Exception during CNT translation: {ex.Message}", "ChatTL Error", (ushort)0xE05B);
+            Log.Error(ex, "Exception during OnCntTranslateCommand.");
         }
     }
 
@@ -721,6 +805,7 @@ public sealed class Plugin : IDalamudPlugin
             case "Japanese": return "JP";
             case "Korean": return "KR";
             case "Chinese": return "CN";
+            case "ChineseTraditional": return "CNT";
             case "French": return "FR";
             case "German": return "DE";
             case "Russian": return "RU";
@@ -746,6 +831,7 @@ public sealed class Plugin : IDalamudPlugin
             case "Japanese": return new Vector4(0.9f, 0.4f, 0.7f, 1.0f); // Pink
             case "Korean": return new Vector4(0.3f, 0.6f, 0.9f, 1.0f); // Blue
             case "Chinese": return new Vector4(0.8f, 0.2f, 0.2f, 1.0f); // Red
+            case "ChineseTraditional": return new Vector4(0.8f, 0.3f, 0.3f, 1.0f); // Darker Red
             case "French": return new Vector4(0.1f, 0.3f, 0.8f, 1.0f); // Blue
             case "German": return new Vector4(0.3f, 0.3f, 0.3f, 1.0f); // Dark gray
             case "Russian": return new Vector4(0.7f, 0.0f, 0.0f, 1.0f); // Dark red
