@@ -6,7 +6,7 @@ using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using Lumina.Excel.Sheets;
 
-namespace SamplePlugin.Windows;
+namespace ChatTranslatorAI.Windows;
 
 public class MainWindow : Window, IDisposable
 {
@@ -37,7 +37,7 @@ public class MainWindow : Window, IDisposable
         // These expect formatting parameter if any part of the text contains a "%", which we can't
         // provide through our bindings, leading to a Crash to Desktop.
         // Replacements can be found in the ImGuiHelpers Class
-        ImGui.TextUnformatted($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
+        ImGui.TextUnformatted($"OpenRouter Model: {Plugin.Configuration.OpenRouterModel}");
 
         if (ImGui.Button("Show Settings"))
         {

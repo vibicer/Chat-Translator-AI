@@ -1,76 +1,64 @@
-> ⚠️ **Don't click Fork!**
-> 
-> This is a GitHub Template repo. If you want to use this for a plugin, just [use this template][new-repo] to make a new repo!
->
-> ![image](https://github.com/goatcorp/SamplePlugin/assets/16760685/d9732094-e1ed-4769-a70b-58ed2b92580c)
+# Chat Translator AI
 
-# SamplePlugin
+**Translate FFXIV chat in real-time!** This plugin uses AI to translate Japanese messages into English and can translate your messages into Japanese.
 
-[![Use This Template badge](https://img.shields.io/badge/Use%20This%20Template-0?logo=github&labelColor=grey)][new-repo]
+It connects to [OpenRouter.ai](https://openrouter.ai/) to provide the translations.
 
+## Key Features
 
-Simple example plugin for Dalamud.
-
-This is not designed to be the simplest possible example, but it is also not designed to cover everything you might want to do. For more detailed questions, come ask in [the Discord](https://discord.gg/holdshift).
-
-## Main Points
-
-* Simple functional plugin
-  * Slash command
-  * Main UI
-  * Settings UI
-  * Image loading
-  * Plugin json
-* Simple, slightly-improved plugin configuration handling
-* Project organization
-  * Copies all necessary plugin files to the output directory
-    * Does not copy dependencies that are provided by dalamud
-    * Output directory can be zipped directly and have exactly what is required
-  * Hides data files from visual studio to reduce clutter
-    * Also allows having data files in different paths than VS would usually allow if done in the IDE directly
+*   **Live Translation**: See Japanese chat automatically translated to English.
+*   **Translate Your Messages**: Use the `/jp` command to translate your English (or other language) messages into Japanese before sending.
+*   **Easy Configuration**: Simple in-game menu to set up your API key and preferences.
+*   **Flexible Model Choice**: Works with various AI models available on OpenRouter.
 
 
-The intention is less that any of this is used directly in other projects, and more to show how similar things can be done.
+## First-Time Setup
 
-## How To Use
+1.  **Get an OpenRouter API Key**:
+    *   Go to [OpenRouter.ai](https://openrouter.ai/) and create an account.
+    *   Find your API key on your account page.
+2.  **Configure the Plugin**:
+    *   In FFXIV, type `/transconfig` in chat to open the settings window.
+    *   Paste your OpenRouter API key into the "OpenRouter API Key" field.
+    *   Choose a translation model (e.g., `google/gemini-2.0-flash-lite-001` is a good start very cheap and fast).
+    *   Click "Save and Close".
 
-### Getting Started
+## How to Use
 
-To begin, [clone this template repository][new-repo] to your own GitHub account. This will automatically bring in everything you need to get a jumpstart on development. You do not need to fork this repository unless you intend to contribute modifications to it.
+**Automatic Translation (Japanese to English):**
 
-Be sure to also check out the [Dalamud Developer Docs][dalamud-docs] for helpful information about building your own plugin. The Developer Docs includes helpful information about all sorts of things, including [how to submit][submit] your newly-created plugin to the official repository. Assuming you use this template repository, the provided project build configuration and license are already chosen to make everything a breeze.
+*   Once set up, the plugin will automatically translate incoming Japanese messages in your chatbox.
+*   Translated messages will appear with a `[ChatTL]` prefix.
+*   Translations include romaji (Japanese written in Latin alphabet) in parentheses to help with pronunciation.
 
-[new-repo]: https://github.com/new?template_name=SamplePlugin&template_owner=goatcorp
-[dalamud-docs]: https://dalamud.dev
-[submit]: https://dalamud.dev/plugin-development/plugin-submission
+**Translating Your Messages (Any Language to Japanese):**
 
-### Prerequisites
+*   Type `/jp <your message>`.
+    *   Example: `/jp Hello, how are you?`
+*   The plugin will show you the Japanese translation along with romaji pronunciation in parentheses.
+*   Only the Japanese text (without romaji) is automatically copied to your clipboard, so you can easily paste it into the chat input.
 
-SamplePlugin assumes all the following prerequisites are met:
+**Accessing Settings:**
 
-* XIVLauncher, FINAL FANTASY XIV, and Dalamud have all been installed and the game has been run with Dalamud at least once.
-* XIVLauncher is installed to its default directories and configurations.
-  * If a custom path is required for Dalamud's dev directory, it must be set with the `DALAMUD_HOME` environment variable.
-* A .NET Core 8 SDK has been installed and configured, or is otherwise available. (In most cases, the IDE will take care of this.)
+*   Type `/transconfig` at any time to open the settings window. Here you can:
+    *   Change your API key or model.
+    *   Enable/disable translations for specific chat channels (Say, Party, Tell, etc.).
+    *   Toggle if your own messages are translated by default (for the automatic JP->EN).
 
-### Building
+## Troubleshooting
 
-1. Open up `SamplePlugin.sln` in your C# editor of choice (likely [Visual Studio 2022](https://visualstudio.microsoft.com) or [JetBrains Rider](https://www.jetbrains.com/rider/)).
-2. Build the solution. By default, this will build a `Debug` build, but you can switch to `Release` in your IDE.
-3. The resulting plugin can be found at `SamplePlugin/bin/x64/Debug/SamplePlugin.dll` (or `Release` if appropriate.)
+*   **"API Key Needed" Error**: Make sure you've entered your OpenRouter API key correctly in `/transconfig`.
+*   **No Translations**:
+    *   Check that "Enable Translation" is on in `/transconfig`.
+    *   Ensure the correct chat channels are enabled.
+    *   Verify your API key and selected model are valid on OpenRouter.
+*   **See Logs**: For detailed errors, type `/xllog` in chat and look for messages from "ChatTranslatorAI".
 
-### Activating in-game
+## Credits
 
-1. Launch the game and use `/xlsettings` in chat or `xlsettings` in the Dalamud Console to open up the Dalamud settings.
-    * In here, go to `Experimental`, and add the full path to the `SamplePlugin.dll` to the list of Dev Plugin Locations.
-2. Next, use `/xlplugins` (chat) or `xlplugins` (console) to open up the Plugin Installer.
-    * In here, go to `Dev Tools > Installed Dev Plugins`, and the `SamplePlugin` should be visible. Enable it.
-3. You should now be able to use `/pmycommand` (chat) or `pmycommand` (console)!
+*   Uses [OpenRouter.ai](https://openrouter.ai/) for AI translation.
+*   Built with the Dalamud plugin framework.
 
-Note that you only need to add it to the Dev Plugin Locations once (Step 1); it is preserved afterwards. You can disable, enable, or load your plugin on startup through the Plugin Installer.
+## License
 
-### Reconfiguring for your own uses
-
-Basically, just replace all references to `SamplePlugin` in all of the files and filenames with your desired name, then start building the plugin of your dreams. You'll figure it out 😁
-
-Dalamud will load the JSON file (by default, `SamplePlugin/SamplePlugin.json`) next to your DLL and use it for metadata, including the description for your plugin in the Plugin Installer. Make sure to update this with information relevant to _your_ plugin!
+MIT License (see `LICENSE` file for details).

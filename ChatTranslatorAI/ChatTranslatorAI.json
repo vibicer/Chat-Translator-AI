@@ -1,0 +1,17 @@
+{
+  "Author": "Vibicer",
+  "Name": "Chat Translator AI",
+  "Punchline": "Translates JP and EN using AI models.",
+  "Description": "Automatically translates Japanese chat messages to English and provides commands to translate your messages to Japanese. Features include: automatic JP to EN translation, /jp command to translate any language to Japanese, channel filtering, and more. Configure via /transconfig.",
+  "InternalName": "ChatTranslatorAI",
+  "AssemblyVersion": "1.0.0.0",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "chat",
+    "translation",
+    "translator",
+    "japanese",
+    "openrouter",
+    "ai"
+  ]
+}
