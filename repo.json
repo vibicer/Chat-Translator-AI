@@ -4,7 +4,7 @@
       "Name": "Chat Translator AI",
       "Description": "Translate FFXIV chat in real-time using AI.",
       "InternalName": "ChatTranslatorAI",
-      "AssemblyVersion": "1.2.1.0",
+      "AssemblyVersion": "1.2.2.0",
       "RepoUrl": "https://github.com/vibicer/Chat-Translator-AI",
       "ApplicableVersion": "any",
       "DalamudApiLevel": 12,
