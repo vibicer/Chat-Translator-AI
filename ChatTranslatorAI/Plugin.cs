@@ -255,25 +255,27 @@ public sealed class Plugin : IDalamudPlugin
             {
                 Log.Debug($"Successfully translated to EN: {translatedEnText}");
                 
+                // Parse the result which may be in format "English text || romaji" or just English text
+                string englishTextOnly = translatedEnText;
+                string displayText = translatedEnText;
+                
+                // Check if the response contains the separator
+                if (translatedEnText.Contains(" || "))
+                {
+                    string[] parts = translatedEnText.Split(new[] { " || " }, StringSplitOptions.None);
+                    if (parts.Length >= 2)
+                    {
+                        englishTextOnly = parts[0].Trim();
+                        string romaji = parts[1].Trim();
+                        displayText = $"{englishTextOnly} ({romaji})";
+                    }
+                }
+                
                 // Display the translated text (which includes romaji from the prompt), using the configured EN command color
                 var messageBuilder = new SeStringBuilder()
                     .AddUiForeground("[ChatTL-EN]: ", (ushort)ColorToUiForegroundId(Configuration.EnCommandColor))
-                    .AddUiForeground(translatedEnText, (ushort)ColorToUiForegroundId(Configuration.EnCommandColor));
+                    .AddUiForeground(displayText, (ushort)ColorToUiForegroundId(Configuration.EnCommandColor));
                 ChatGui.Print(messageBuilder.Build());
-
-                // Extract and copy only the English part to clipboard
-                string englishTextOnly = translatedEnText; // Default to the full text
-                int lastOpenParenIndex = translatedEnText.LastIndexOf('(');
-
-                if (lastOpenParenIndex > 0) // Check if '(' exists and is not the first character
-                {
-                    int lastCloseParenIndex = translatedEnText.LastIndexOf(')');
-                    // Ensure the ')' comes after the '('
-                    if (lastCloseParenIndex > lastOpenParenIndex)
-                    {
-                        englishTextOnly = translatedEnText.Substring(0, lastOpenParenIndex).Trim();
-                    }
-                }
 
                 try
                 {
@@ -332,25 +334,27 @@ public sealed class Plugin : IDalamudPlugin
             {
                 Log.Debug($"Successfully translated to CN: {translatedCnText}");
                 
-                // Display the translated text (which includes pinyin from the prompt), using the configured CN command color
-                var messageBuilder = new SeStringBuilder()
-                    .AddUiForeground("[ChatTL-CN]: ", (ushort)ColorToUiForegroundId(Configuration.CnCommandColor))
-                    .AddUiForeground(translatedCnText, (ushort)ColorToUiForegroundId(Configuration.CnCommandColor));
-                ChatGui.Print(messageBuilder.Build());
-
-                // Extract and copy only the Chinese part to clipboard
-                string chineseTextOnly = translatedCnText; // Default to the full text
-                int lastOpenParenIndex = translatedCnText.LastIndexOf('(');
-
-                if (lastOpenParenIndex > 0) // Check if '(' exists and is not the first character
+                // Parse the result which may be in format "Chinese text || pinyin" or just Chinese text
+                string chineseTextOnly = translatedCnText;
+                string displayText = translatedCnText;
+                
+                // Check if the response contains the separator
+                if (translatedCnText.Contains(" || "))
                 {
-                    int lastCloseParenIndex = translatedCnText.LastIndexOf(')');
-                    // Ensure the ')' comes after the '('
-                    if (lastCloseParenIndex > lastOpenParenIndex)
+                    string[] parts = translatedCnText.Split(new[] { " || " }, StringSplitOptions.None);
+                    if (parts.Length >= 2)
                     {
-                        chineseTextOnly = translatedCnText.Substring(0, lastOpenParenIndex).Trim();
+                        chineseTextOnly = parts[0].Trim();
+                        string pinyin = parts[1].Trim();
+                        displayText = $"{chineseTextOnly} ({pinyin})";
                     }
                 }
+                
+                // Display the translated text with proper formatting
+                var messageBuilder = new SeStringBuilder()
+                    .AddUiForeground("[ChatTL-CN]: ", (ushort)ColorToUiForegroundId(Configuration.CnCommandColor))
+                    .AddUiForeground(displayText, (ushort)ColorToUiForegroundId(Configuration.CnCommandColor));
+                ChatGui.Print(messageBuilder.Build());
 
                 try
                 {
@@ -409,25 +413,27 @@ public sealed class Plugin : IDalamudPlugin
             {
                 Log.Debug($"Successfully translated to CNT: {translatedCntText}");
                 
-                // Display the translated text (which includes pinyin from the prompt), using the configured CNT command color
-                var messageBuilder = new SeStringBuilder()
-                    .AddUiForeground("[ChatTL-CNT]: ", (ushort)ColorToUiForegroundId(Configuration.CntCommandColor))
-                    .AddUiForeground(translatedCntText, (ushort)ColorToUiForegroundId(Configuration.CntCommandColor));
-                ChatGui.Print(messageBuilder.Build());
-
-                // Extract and copy only the Chinese part to clipboard
-                string chineseTextOnly = translatedCntText; // Default to the full text
-                int lastOpenParenIndex = translatedCntText.LastIndexOf('(');
-
-                if (lastOpenParenIndex > 0) // Check if '(' exists and is not the first character
+                // Parse the result which may be in format "Chinese text || pinyin" or just Chinese text
+                string chineseTextOnly = translatedCntText;
+                string displayText = translatedCntText;
+                
+                // Check if the response contains the separator
+                if (translatedCntText.Contains(" || "))
                 {
-                    int lastCloseParenIndex = translatedCntText.LastIndexOf(')');
-                    // Ensure the ')' comes after the '('
-                    if (lastCloseParenIndex > lastOpenParenIndex)
+                    string[] parts = translatedCntText.Split(new[] { " || " }, StringSplitOptions.None);
+                    if (parts.Length >= 2)
                     {
-                        chineseTextOnly = translatedCntText.Substring(0, lastOpenParenIndex).Trim();
+                        chineseTextOnly = parts[0].Trim();
+                        string pinyin = parts[1].Trim();
+                        displayText = $"{chineseTextOnly} ({pinyin})";
                     }
                 }
+                
+                // Display the translated text with proper formatting
+                var messageBuilder = new SeStringBuilder()
+                    .AddUiForeground("[ChatTL-CNT]: ", (ushort)ColorToUiForegroundId(Configuration.CntCommandColor))
+                    .AddUiForeground(displayText, (ushort)ColorToUiForegroundId(Configuration.CntCommandColor));
+                ChatGui.Print(messageBuilder.Build());
 
                 try
                 {
