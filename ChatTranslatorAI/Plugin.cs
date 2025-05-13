@@ -787,6 +787,24 @@ public sealed class Plugin : IDalamudPlugin
         {
             try
             {
+                // Special handling for Indonesian: only translate from English or Japanese
+                if (language == "Indonesian")
+                {
+                    // If we already know it's Japanese, proceed
+                    if (sourceLanguageHint != "Japanese")
+                    {
+                        // Otherwise, check if the message is in English or Japanese
+                        bool isEnglishOrJapanese = await IsEnglishOrJapaneseText(messageText);
+                        
+                        if (!isEnglishOrJapanese)
+                        {
+                            // Skip translation if not English or Japanese
+                            Log.Debug($"Skipping Indonesian translation for message '{messageText}' because it's not detected as English or Japanese.");
+                            return;
+                        }
+                    }
+                }
+                
                 string langCode = GetLanguageCode(language);
                 Log.Debug($"TranslateToLanguage called: Source='{sourceLanguageHint}', Target='{language}', Message='{messageText}'");
 
@@ -821,6 +839,46 @@ public sealed class Plugin : IDalamudPlugin
                 Log.Error(ex, $"Exception during {language} translation task.");
             }
         });
+    }
+    
+    // Helper method to detect if text is English or Japanese using LLM
+    private async Task<bool> IsEnglishOrJapaneseText(string text)
+    {
+        if (ContainsJapanese(text))
+        {
+            return true; // Use the existing method for Japanese detection
+        }
+        
+        try
+        {
+            // Use the translator to detect the language
+            string prompt = "Is the following text in English (including slang, shorthand, or casual English)? Please respond with ONLY 'yes' or 'no'.\n\nText: " + text;
+            
+            string? response = await _translator.TranslateTextAsync(
+                prompt,
+                Configuration.OpenRouterApiKey,
+                Configuration.OpenRouterModel,
+                "auto",
+                "English",
+                false
+            );
+            
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                // Simple check for affirmative response
+                string cleanResponse = response.ToLower().Trim();
+                return cleanResponse.Contains("yes") || 
+                       cleanResponse.Contains("english") || 
+                       !cleanResponse.Contains("no");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error during language detection");
+        }
+        
+        // Default to allowing translation in case of errors
+        return true;
     }
     
     // Helper method to get a language code for display
