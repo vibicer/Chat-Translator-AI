@@ -41,7 +41,7 @@ public class OpenRouterTranslator
         string systemPrompt;
         // Adjust politeness instructions based on useFormalLanguage
         // For automatic translations (where useFormalLanguage will be false), this aims for a standard/neutral translation.
-        string politenessInstructionJP = useFormalLanguage ? "Use formal Japanese." : ""; // Empty string means no specific politeness request for standard translation
+        string politenessInstructionJP = useFormalLanguage ? "Use formal Japanese." : "Use casual Japanese."; // Empty string means no specific politeness request for standard translation
         string politenessInstructionEN = useFormalLanguage ? "Translate into formal and polite English." : ""; // Empty string for standard English
 
         string formalityCn = useFormalLanguage ? "formal" : ""; // Request "standard Chinese"
@@ -51,7 +51,7 @@ public class OpenRouterTranslator
         if (sourceLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase) && targetLanguage.Equals("Japanese", StringComparison.OrdinalIgnoreCase))
         {
             // This is for /jp command, target is Japanese
-            systemPrompt = $"You are a direct translator to Japanese. Detect the language of the input text and translate it to Japanese. {politenessInstructionJP}. Your response must be in exactly this format: 'TRANSLATION || ROMAJI' where TRANSLATION is the Japanese text and ROMAJI is the transliteration to Latin alphabet. The Japanese text must come first, followed by exactly ' || ' as the separator, then the romaji. DO NOT include any quotes, equals signs, or other special characters in your output. DO NOT include any explanations or additional text.";
+            systemPrompt = $"You are a direct translator to Japanese. Detect the language of the input text and translate it to Japanese. {politenessInstructionJP} and use style speaking like context above. Your response must be in exactly this format: 'TRANSLATION || ROMAJI' where TRANSLATION is the Japanese text and ROMAJI is the transliteration to Latin alphabet. The Japanese text must come first, followed by exactly ' || ' as the separator, then the romaji. DO NOT include any quotes, equals signs, or other special characters in your output. DO NOT include any explanations or additional text.";
         }
         else if (sourceLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase) && targetLanguage.Equals("English", StringComparison.OrdinalIgnoreCase))
         {
