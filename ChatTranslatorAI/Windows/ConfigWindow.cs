@@ -122,6 +122,71 @@ public class ConfigWindow : Window, IDisposable
             configuration.UseFormalLanguage = useFormalLanguage;
         }
         
+        ImGui.Separator();
+        
+        // Context Memory Settings
+        ImGui.TextColored(headerColor, "Context Memory Settings");
+        ImGui.TextWrapped("Context memory helps the translator understand the conversation better by providing previous messages as context.");
+        
+        var enableContextMemory = configuration.EnableContextMemory;
+        if (ImGui.Checkbox("Enable Context Memory", ref enableContextMemory))
+        {
+            configuration.EnableContextMemory = enableContextMemory;
+        }
+        
+        if (enableContextMemory)
+        {
+            ImGui.Indent(20);
+            var maxContextMessages = configuration.MaxContextMessages;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.SliderInt("Max Context Messages", ref maxContextMessages, 1, 10))
+            {
+                configuration.MaxContextMessages = maxContextMessages;
+            }
+            
+            if (ImGui.Button("Clear All Context Memory"))
+            {
+                plugin.ClearAllContext();
+            }
+            
+            // Display current context
+            if (configuration.ChannelContexts.Count > 0)
+            {
+                ImGui.TextColored(headerColor, "Active Contexts:");
+                
+                foreach (var context in configuration.ChannelContexts)
+                {
+                    if (context.Value.Count > 0)
+                    {
+                        if (ImGui.TreeNode($"{context.Key} ({context.Value.Count} messages)##Context{context.Key}"))
+                        {
+                            foreach (var msg in context.Value)
+                            {
+                                ImGui.TextWrapped($"[{msg.Timestamp:HH:mm:ss}] {msg.Sender}: {msg.Message}");
+                            }
+                            
+                            // Clear button
+                            ImGui.TableNextColumn();
+                            string buttonId = $"Clear##{context.Key}";
+                            if (ImGui.Button(buttonId))
+                            {
+                                plugin.ClearChannelContext(context.Key);
+                            }
+                            
+                            ImGui.TreePop();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f), "No active contexts");
+            }
+            ImGui.Unindent(20);
+        }
+        
+        ImGui.Separator();
+        
         ImGui.Spacing();
         ImGui.TextColored(headerColor, "Display translations in selected languages");
         ImGui.TextWrapped("Select up to 2 languages to display translations in:");

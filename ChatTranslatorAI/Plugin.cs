@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using ImGuiNET;
 using System.Numerics;
 using System.Linq;
+using System.Text;
+using System.Collections.Generic;
 
 namespace ChatTranslatorAI;
 
@@ -159,10 +161,26 @@ public sealed class Plugin : IDalamudPlugin
             // Indicate that translation is in progress
             ChatGui.Print($"Translating to Japanese...", "ChatTL");
             
+            // Get conversation context if enabled
+            string contextPrefix = string.Empty;
+            if (Configuration.EnableContextMemory)
+            {
+                contextPrefix = GetChannelContext(targetChannel);
+                if (!string.IsNullOrWhiteSpace(contextPrefix))
+                {
+                    Log.Debug($"Including context for /jp command in channel {targetChannel}: {contextPrefix}");
+                }
+            }
+            
+            // Prepare the text to translate with context if available
+            string textWithContext = string.IsNullOrWhiteSpace(contextPrefix) 
+                ? textToTranslate 
+                : $"{contextPrefix}\n\nTranslate this message to Japanese: {textToTranslate}";
+            
             // Instead of specifying English as the source language, we'll use "auto"
             // to let the AI model detect the language automatically
             string? translatedJpText = await _translator.TranslateTextAsync(
-                textToTranslate, 
+                textWithContext, 
                 Configuration.OpenRouterApiKey, 
                 Configuration.OpenRouterModel,
                 "auto", // Auto-detect source language
@@ -237,14 +255,43 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        // Get target channel and message text
+        string targetChannel = "say"; // Default to say
         string textToTranslate = args;
+
+        string[] argParts = args.Split(new[] { ' ' }, 2);
+        if (argParts.Length > 1)
+        {
+            string potentialChannel = argParts[0].ToLower();
+            if (IsValidChatChannel(potentialChannel))
+            {
+                targetChannel = potentialChannel;
+                textToTranslate = argParts[1];
+            }
+        }
 
         try
         {
             ChatGui.Print($"Translating to English...", "ChatTL");
             
+            // Get conversation context if enabled
+            string contextPrefix = string.Empty;
+            if (Configuration.EnableContextMemory)
+            {
+                contextPrefix = GetChannelContext(targetChannel);
+                if (!string.IsNullOrWhiteSpace(contextPrefix))
+                {
+                    Log.Debug($"Including context for /en command in channel {targetChannel}: {contextPrefix}");
+                }
+            }
+            
+            // Prepare the text to translate with context if available
+            string textWithContext = string.IsNullOrWhiteSpace(contextPrefix) 
+                ? textToTranslate 
+                : $"{contextPrefix}\n\nTranslate this message to English: {textToTranslate}";
+            
             string? translatedEnText = await _translator.TranslateTextAsync(
-                textToTranslate, 
+                textWithContext, 
                 Configuration.OpenRouterApiKey, 
                 Configuration.OpenRouterModel,
                 "auto", // Changed from "Japanese" to "auto" to detect any language
@@ -316,14 +363,43 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        // Get target channel and message text
+        string targetChannel = "say"; // Default to say
         string textToTranslate = args;
+
+        string[] argParts = args.Split(new[] { ' ' }, 2);
+        if (argParts.Length > 1)
+        {
+            string potentialChannel = argParts[0].ToLower();
+            if (IsValidChatChannel(potentialChannel))
+            {
+                targetChannel = potentialChannel;
+                textToTranslate = argParts[1];
+            }
+        }
 
         try
         {
             ChatGui.Print($"Translating to Chinese with pinyin...", "ChatTL");
             
+            // Get conversation context if enabled
+            string contextPrefix = string.Empty;
+            if (Configuration.EnableContextMemory)
+            {
+                contextPrefix = GetChannelContext(targetChannel);
+                if (!string.IsNullOrWhiteSpace(contextPrefix))
+                {
+                    Log.Debug($"Including context for /cn command in channel {targetChannel}: {contextPrefix}");
+                }
+            }
+            
+            // Prepare the text to translate with context if available
+            string textWithContext = string.IsNullOrWhiteSpace(contextPrefix) 
+                ? textToTranslate 
+                : $"{contextPrefix}\n\nTranslate this message to Chinese (Simplified): {textToTranslate}";
+            
             string? translatedCnText = await _translator.TranslateTextAsync(
-                textToTranslate, 
+                textWithContext, 
                 Configuration.OpenRouterApiKey, 
                 Configuration.OpenRouterModel,
                 "auto", // Auto-detect source language
@@ -395,14 +471,43 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        // Get target channel and message text
+        string targetChannel = "say"; // Default to say
         string textToTranslate = args;
+
+        string[] argParts = args.Split(new[] { ' ' }, 2);
+        if (argParts.Length > 1)
+        {
+            string potentialChannel = argParts[0].ToLower();
+            if (IsValidChatChannel(potentialChannel))
+            {
+                targetChannel = potentialChannel;
+                textToTranslate = argParts[1];
+            }
+        }
 
         try
         {
             ChatGui.Print($"Translating to Chinese Traditional with pinyin...", "ChatTL");
             
+            // Get conversation context if enabled
+            string contextPrefix = string.Empty;
+            if (Configuration.EnableContextMemory)
+            {
+                contextPrefix = GetChannelContext(targetChannel);
+                if (!string.IsNullOrWhiteSpace(contextPrefix))
+                {
+                    Log.Debug($"Including context for /cnt command in channel {targetChannel}: {contextPrefix}");
+                }
+            }
+            
+            // Prepare the text to translate with context if available
+            string textWithContext = string.IsNullOrWhiteSpace(contextPrefix) 
+                ? textToTranslate 
+                : $"{contextPrefix}\n\nTranslate this message to Chinese (Traditional): {textToTranslate}";
+            
             string? translatedCntText = await _translator.TranslateTextAsync(
-                textToTranslate, 
+                textWithContext, 
                 Configuration.OpenRouterApiKey, 
                 Configuration.OpenRouterModel,
                 "auto", // Auto-detect source language
@@ -528,6 +633,12 @@ public sealed class Plugin : IDalamudPlugin
         if (IsSelfMessage(senderText))
         {
             return;
+        }
+
+        // Store message in context memory regardless of language, if enabled
+        if (Configuration.EnableContextMemory)
+        {
+            StoreMessageInContext(type.ToString(), senderText, messageText);
         }
 
         // Determine if the message contains Japanese characters
@@ -932,5 +1043,75 @@ public sealed class Plugin : IDalamudPlugin
             case "Thai": return new Vector4(0.0f, 0.0f, 0.8f, 1.0f); // Blue
             default: return new Vector4(0.7f, 0.7f, 0.7f, 1.0f); // Gray (fallback)
         }
+    }
+
+    // Helper method to store message in context
+    private void StoreMessageInContext(string channel, string sender, string message)
+    {
+        if (string.IsNullOrWhiteSpace(message) || string.IsNullOrWhiteSpace(channel))
+            return;
+            
+        // Create new context message
+        var contextMessage = new Configuration.ContextMessage
+        {
+            Sender = sender,
+            Message = message,
+            Timestamp = DateTime.Now
+        };
+        
+        // Initialize list if needed
+        if (!Configuration.ChannelContexts.TryGetValue(channel, out var messageList))
+        {
+            messageList = new List<Configuration.ContextMessage>();
+            Configuration.ChannelContexts[channel] = messageList;
+        }
+        
+        // Add message to list
+        messageList.Add(contextMessage);
+        
+        // Ensure list doesn't exceed maximum size
+        while (messageList.Count > Configuration.MaxContextMessages)
+        {
+            messageList.RemoveAt(0);
+        }
+        
+        Log.Debug($"Added message to context for channel {channel}: {contextMessage}");
+    }
+    
+    // Helper method to get context for a channel
+    private string GetChannelContext(string channel)
+    {
+        if (!Configuration.EnableContextMemory || string.IsNullOrWhiteSpace(channel))
+            return string.Empty;
+            
+        if (!Configuration.ChannelContexts.TryGetValue(channel, out var messageList) || messageList.Count == 0)
+            return string.Empty;
+            
+        StringBuilder contextBuilder = new StringBuilder();
+        contextBuilder.AppendLine("Recent conversation context:");
+        
+        foreach (var msg in messageList)
+        {
+            contextBuilder.AppendLine($"{msg.Sender}: {msg.Message}");
+        }
+        
+        return contextBuilder.ToString();
+    }
+    
+    // Helper method to clear context for a channel
+    public void ClearChannelContext(string channel)
+    {
+        if (Configuration.ChannelContexts.ContainsKey(channel))
+        {
+            Configuration.ChannelContexts[channel].Clear();
+            Log.Information($"Cleared context for channel {channel}");
+        }
+    }
+    
+    // Helper method to clear all context
+    public void ClearAllContext()
+    {
+        Configuration.ChannelContexts.Clear();
+        Log.Information("Cleared all channel contexts");
     }
 }

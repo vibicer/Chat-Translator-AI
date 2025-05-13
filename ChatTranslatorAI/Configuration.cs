@@ -5,6 +5,7 @@ using Dalamud.Plugin.Services;  // Added for IDalamudPluginInterface
 using System.Collections.Generic;
 using Dalamud.Game.Text;
 using System.Numerics; // For Vector4 (colors)
+using System.Collections.Generic; // Added for Queue
 
 namespace ChatTranslatorAI;
 
@@ -77,10 +78,10 @@ public class Configuration : IPluginConfiguration
     };
     
     // Special color settings for manual translation commands
-    public Vector4 JpCommandColor { get; set; } = new Vector4(0.20f, 0.80f, 0.20f, 1.0f); // Green
-    public Vector4 EnCommandColor { get; set; } = new Vector4(0.20f, 0.60f, 0.90f, 1.0f); // Blue
-    public Vector4 CnCommandColor { get; set; } = new Vector4(0.90f, 0.20f, 0.20f, 1.0f); // Red
-    public Vector4 CntCommandColor { get; set; } = new Vector4(0.80f, 0.30f, 0.30f, 1.0f); // Darker Red
+    public Vector4 JpCommandColor { get; set; } = new Vector4(0.9f, 0.4f, 0.7f, 1.0f); // Pink
+    public Vector4 EnCommandColor { get; set; } = new Vector4(0.3f, 0.6f, 0.9f, 1.0f); // Blue
+    public Vector4 CnCommandColor { get; set; } = new Vector4(0.8f, 0.2f, 0.2f, 1.0f); // Red
+    public Vector4 CntCommandColor { get; set; } = new Vector4(0.8f, 0.3f, 0.3f, 1.0f); // Darker Red
     
     // Chat channel filtering
     public Dictionary<XivChatType, bool> EnabledChatTypes { get; set; } = new Dictionary<XivChatType, bool>
@@ -109,6 +110,28 @@ public class Configuration : IPluginConfiguration
         { XivChatType.Ls8, true },
         { XivChatType.NoviceNetwork, true },
     };
+
+    // Context Memory
+    public bool EnableContextMemory { get; set; } = false;
+    public int MaxContextMessages { get; set; } = 3;
+    
+    // Saved per channel context
+    [NonSerialized]
+    public Dictionary<string, List<ContextMessage>> ChannelContexts = new Dictionary<string, List<ContextMessage>>();
+    
+    // Context class for storing message information
+    [Serializable]
+    public class ContextMessage
+    {
+        public string Sender { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+        
+        public override string ToString()
+        {
+            return $"[{Timestamp:HH:mm:ss}] {Sender}: {Message}";
+        }
+    }
 
     // Using IDalamudPluginInterface instead of DalamudPluginInterface
     [NonSerialized]
