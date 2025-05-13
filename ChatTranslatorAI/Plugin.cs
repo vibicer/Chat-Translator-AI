@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ImGuiNET;
 using System.Numerics;
+using System.Linq;
 
 namespace ChatTranslatorAI;
 
@@ -529,91 +530,98 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        if (!ContainsJapanese(messageText))
-        {
-            return;
-        }
+        // Determine if the message contains Japanese characters
+        bool messageIsJapanese = ContainsJapanese(messageText);
+        
+        // Determine if English translation is enabled and needed
+        bool needsEnglishTranslationFromJapanese = Configuration.EnabledLanguages.TryGetValue("English", out bool isEnglishEnabledGlobally) && isEnglishEnabledGlobally && messageIsJapanese;
 
-        Log.Debug($"Attempting to translate Japanese message: {messageText}");
+        // Determine if any other language translation is needed
+        bool needsOtherLanguageTranslation = Configuration.EnabledLanguages.Any(lang => lang.Value && lang.Key != "English");
+
+        // If no translation is needed at all, exit
+        if (!needsEnglishTranslationFromJapanese && !needsOtherLanguageTranslation)
+        {
+            // However, if English is globally enabled and the message is NOT Japanese,
+            // we might still want to translate it if other languages are selected.
+            // This specific case is handled inside the loop for other languages.
+            // For now, if English isn't needed for a Japanese message, and no other languages are active, exit.
+            if (!Configuration.EnabledLanguages.Any(lang => lang.Value)) // if no languages are selected at all
+                 return;
+            if (messageIsJapanese && !needsEnglishTranslationFromJapanese && !needsOtherLanguageTranslation) // if Japanese but English not selected, and no other lang
+                 return;
+            if (!messageIsJapanese && !needsOtherLanguageTranslation) // if not Japanese and no other languages selected
+                 return;
+        }
+        
+        Log.Debug($"Processing message: '{messageText}'. IsJapanese: {messageIsJapanese}, NeedsEnglishFromJP: {needsEnglishTranslationFromJapanese}, NeedsOther: {needsOtherLanguageTranslation}");
 
         Task.Run(async () =>
         {
             try
             {
-                string? translatedText = await _translator.TranslateTextAsync(
-                    messageText, 
-                    Configuration.OpenRouterApiKey, 
-                    Configuration.OpenRouterModel,
-                    "Japanese",
-                    "English",
-                    Configuration.UseFormalLanguage
-                );
+                string? primaryTranslatedToEnglishText = null;
 
-                if (!string.IsNullOrWhiteSpace(translatedText) && !translatedText.StartsWith("Error:"))
+                if (needsEnglishTranslationFromJapanese)
                 {
-                    // Moved the English translation display to the conditional blocks above
-                    Log.Debug($"Translation successful: {translatedText}");
-                    
-                    // Process additional language translations if any are enabled
-                    bool needsEnglishTranslation = Configuration.EnabledLanguages.TryGetValue("English", out bool isEnglishEnabled) && isEnglishEnabled;
-                    
-                    // Only continue with English translation if it's enabled
-                    if (needsEnglishTranslation)
+                    Log.Debug($"Attempting to translate Japanese message to English: {messageText}");
+                    primaryTranslatedToEnglishText = await _translator.TranslateTextAsync(
+                        messageText,
+                        Configuration.OpenRouterApiKey,
+                        Configuration.OpenRouterModel,
+                        "Japanese", // Source is Japanese
+                        "English",  // Target is English
+                        false // <--- Ensure automatic JP->EN uses standard (non-formal) translation
+                    );
+
+                    if (!string.IsNullOrWhiteSpace(primaryTranslatedToEnglishText) && !primaryTranslatedToEnglishText.StartsWith("Error:"))
                     {
-                        // Get the appropriate color for this chat type
-                        Vector4 textColor = new Vector4(1, 1, 1, 1); // Default white
-                        if (Configuration.ChatColors.TryGetValue(type, out Vector4 channelColor))
-                        {
-                            textColor = channelColor;
-                        }
-                        
-                        // Create a colored message
+                        Log.Debug($"Primary JP->EN translation successful: {primaryTranslatedToEnglishText}");
+                        Vector4 textColor = Configuration.ChatColors.TryGetValue(type, out var channelColor) ? channelColor : new Vector4(1, 1, 1, 1);
                         var translatedMessage = new SeStringBuilder()
                             .AddUiForeground($"[EN][{senderText}]: ", (ushort)ColorToUiForegroundId(textColor))
-                            .AddUiForeground(translatedText, (ushort)ColorToUiForegroundId(textColor))
+                            .AddUiForeground(primaryTranslatedToEnglishText, (ushort)ColorToUiForegroundId(textColor))
                             .Build();
-
                         ChatGui.Print(translatedMessage, "ChatTL");
                     }
-                    
-                    // Process additional language translations (any enabled language)
-                    foreach (var languagePair in Configuration.EnabledLanguages)
+                    else if (primaryTranslatedToEnglishText != null) // Error from translation service
                     {
-                        string language = languagePair.Key;
-                        bool isEnabled = languagePair.Value;
-                        
-                        // Skip languages that aren't enabled and skip English as we already handled it
-                        if (!isEnabled || language == "English")
-                        {
-                            continue;
-                        }
-                        
-                        // Translate to the selected language
-                        TranslateToLanguage(messageText, senderText, type, language);
+                        HandleTranslationError(primaryTranslatedToEnglishText);
+                        Log.Warning($"JP->EN Translation service reported an issue: {primaryTranslatedToEnglishText}");
+                        primaryTranslatedToEnglishText = null; // Ensure it's null on error
                     }
                 }
-                else if (translatedText != null)
+
+                // Process additional enabled language translations
+                foreach (var languagePair in Configuration.EnabledLanguages)
                 {
-                    if (translatedText.Contains("API Key"))
+                    string targetLanguage = languagePair.Key;
+                    bool isEnabled = languagePair.Value;
+
+                    if (!isEnabled || targetLanguage == "English") // Skip if not enabled or if it's English (already handled or not a target for this loop)
                     {
-                        ShowApiKeyError();
+                        continue;
                     }
-                    else if (translatedText.Contains("Model"))
+
+                    // If the original message was Japanese, translate from Japanese to the targetLanguage
+                    if (messageIsJapanese)
                     {
-                        ShowModelError(Configuration.OpenRouterModel);
+                        Log.Debug($"Translating original Japanese message ('{messageText}') to {targetLanguage}");
+                        TranslateToLanguage(messageText, senderText, type, targetLanguage, "Japanese");
                     }
-                    else
+                    // If the original message was NOT Japanese (e.g., English), translate from auto-detected source (likely English) to the targetLanguage
+                    else 
                     {
-                        ShowTranslationError(translatedText);
+                        // This is where we handle non-Japanese source, like English to Indonesian
+                        Log.Debug($"Original message ('{messageText}') is not Japanese. Attempting to translate to {targetLanguage} (assuming auto-detect for source).");
+                        TranslateToLanguage(messageText, senderText, type, targetLanguage, "auto");
                     }
-                    
-                    Log.Warning($"Translation service reported an issue: {translatedText}");
                 }
             }
             catch (Exception ex)
             {
                 ShowTranslationError($"Error: {ex.Message}");
-                Log.Error(ex, "Exception during asynchronous translation task.");
+                Log.Error(ex, "Exception during asynchronous translation task in OnChatMessage.");
             }
         });
     }
@@ -653,6 +661,24 @@ public sealed class Plugin : IDalamudPlugin
             $"Translation failed: {errorDetails}. Please try again later or check your settings (/transconfig)", 
             "ChatTL Error", 
             (ushort)0xE05B);
+    }
+
+    private void HandleTranslationError(string? errorText)
+    {
+        if (string.IsNullOrWhiteSpace(errorText)) return;
+
+        if (errorText.Contains("API Key"))
+        {
+            ShowApiKeyError();
+        }
+        else if (errorText.Contains("Model"))
+        {
+            ShowModelError(Configuration.OpenRouterModel);
+        }
+        else
+        {
+            ShowTranslationError(errorText);
+        }
     }
 
     private DateTime _lastApiErrorTime = DateTime.MinValue;
@@ -755,41 +781,39 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     // Helper method for translating to a specific language
-    private void TranslateToLanguage(string messageText, string senderText, XivChatType type, string language)
+    private void TranslateToLanguage(string messageText, string senderText, XivChatType type, string language, string sourceLanguageHint = "auto")
     {
         Task.Run(async () =>
         {
             try
             {
-                // Get language code for display
                 string langCode = GetLanguageCode(language);
-                
+                Log.Debug($"TranslateToLanguage called: Source='{sourceLanguageHint}', Target='{language}', Message='{messageText}'");
+
                 string? translatedText = await _translator.TranslateTextAsync(
                     messageText,
                     Configuration.OpenRouterApiKey,
                     Configuration.OpenRouterModel,
-                    "auto", // Auto-detect source language
+                    sourceLanguageHint, // Use the provided source language hint
                     language,
-                    Configuration.UseFormalLanguage
+                    false // <--- Ensure automatic translations to other languages use standard (non-formal) translation
                 );
 
                 if (!string.IsNullOrWhiteSpace(translatedText) && !translatedText.StartsWith("Error:"))
                 {
-                    // Use a specific color based on the language
                     Vector4 languageColor = GetLanguageColor(language);
-                    
-                    // Create a colored message with language indicator
                     var translatedMessage = new SeStringBuilder()
                         .AddUiForeground($"[{langCode}][{senderText}]: ", (ushort)ColorToUiForegroundId(languageColor))
                         .AddUiForeground(translatedText, (ushort)ColorToUiForegroundId(languageColor))
                         .Build();
-
                     ChatGui.Print(translatedMessage, "ChatTL");
                     Log.Debug($"{language} translation successful: {translatedText}");
                 }
                 else if (translatedText != null)
                 {
                     Log.Warning($"{language} translation service reported an issue: {translatedText}");
+                    // Optionally, display this error to the user for non-primary translations too
+                    // HandleTranslationError(translatedText); 
                 }
             }
             catch (Exception ex)

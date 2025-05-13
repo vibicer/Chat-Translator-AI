@@ -39,13 +39,19 @@ public class OpenRouterTranslator
         }
 
         string systemPrompt;
-        string politenessInstructionJP = useFormalLanguage ? "Use formal Japanese (丁寧語 - teineigo or 敬語 - keigo where appropriate)." : "Use casual, informal Japanese (タメ口 - tameguchi).";
-        string politenessInstructionEN = useFormalLanguage ? "Translate into formal and polite English." : "Translate into casual and informal English.";
+        // Adjust politeness instructions based on useFormalLanguage
+        // For automatic translations (where useFormalLanguage will be false), this aims for a standard/neutral translation.
+        string politenessInstructionJP = useFormalLanguage ? "Use formal Japanese." : ""; // Empty string means no specific politeness request for standard translation
+        string politenessInstructionEN = useFormalLanguage ? "Translate into formal and polite English." : ""; // Empty string for standard English
+
+        string formalityCn = useFormalLanguage ? "formal" : ""; // Request "standard Chinese"
+        string formalityCnt = useFormalLanguage ? "formal" : ""; // Request "standard Traditional Chinese"
+        string formalityId = useFormalLanguage ? "formal (baku)" : ""; // Request "standard Indonesian"
 
         if (sourceLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase) && targetLanguage.Equals("Japanese", StringComparison.OrdinalIgnoreCase))
         {
             // This is for /jp command, target is Japanese
-            systemPrompt = $"You are a direct translator to Japanese. Detect the language of the input text and translate it to Japanese. {politenessInstructionJP} Ensure correct grammar and natural phrasing. Your response must be in exactly this format: 'TRANSLATION || ROMAJI' where TRANSLATION is the Japanese text and ROMAJI is the transliteration to Latin alphabet. The Japanese text must come first, followed by exactly ' || ' as the separator, then the romaji. DO NOT include any quotes, equals signs, or other special characters in your output. DO NOT include any explanations or additional text.";
+            systemPrompt = $"You are a direct translator to Japanese. Detect the language of the input text and translate it to Japanese. {politenessInstructionJP}. Your response must be in exactly this format: 'TRANSLATION || ROMAJI' where TRANSLATION is the Japanese text and ROMAJI is the transliteration to Latin alphabet. The Japanese text must come first, followed by exactly ' || ' as the separator, then the romaji. DO NOT include any quotes, equals signs, or other special characters in your output. DO NOT include any explanations or additional text.";
         }
         else if (sourceLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase) && targetLanguage.Equals("English", StringComparison.OrdinalIgnoreCase))
         {
@@ -67,7 +73,6 @@ public class OpenRouterTranslator
                  targetLanguage.Equals("Chinese", StringComparison.OrdinalIgnoreCase))
         {
             // Translation to Chinese Simplified with pinyin
-            string formalityCn = useFormalLanguage ? "formal" : "casual/conversational";
             systemPrompt = $"You are a direct translator to Chinese (Simplified). Detect the input language and translate it to grammatically correct, natural-sounding {formalityCn} Chinese. Include pinyin in this exact format: 'TRANSLATION || PINYIN' where TRANSLATION is the Chinese text and PINYIN is the pronunciation. The Chinese text must come first, followed by exactly ' || ' as the separator, then the pinyin. Do not include quotes, equals signs, or other special characters.";
         }
         else if ((sourceLanguage.Equals("Japanese", StringComparison.OrdinalIgnoreCase) || 
@@ -76,7 +81,6 @@ public class OpenRouterTranslator
                  targetLanguage.Equals("ChineseTraditional", StringComparison.OrdinalIgnoreCase))
         {
             // Translation to Chinese Traditional with pinyin
-            string formalityCnt = useFormalLanguage ? "formal" : "casual/conversational";
             systemPrompt = $"You are a direct translator to Chinese (Traditional). Detect the input language and translate it to grammatically correct, natural-sounding {formalityCnt} Traditional Chinese. Include pinyin in this exact format: 'TRANSLATION || PINYIN' where TRANSLATION is the Traditional Chinese text and PINYIN is the pronunciation. The Chinese text must come first, followed by exactly ' || ' as the separator, then the pinyin. Do not include quotes, equals signs, or other special characters.";
         }
         else if ((sourceLanguage.Equals("Japanese", StringComparison.OrdinalIgnoreCase) || 
@@ -85,7 +89,6 @@ public class OpenRouterTranslator
                  targetLanguage.Equals("Indonesian", StringComparison.OrdinalIgnoreCase))
         {
             // Translation to Indonesian
-            string formalityId = useFormalLanguage ? "formal (baku)" : "informal/conversational (tidak baku)";
             systemPrompt = $"You are a direct translator to Indonesian. Detect the input language and translate it to grammatically correct, natural-sounding {formalityId} Indonesian. Provide only the translated text with proper grammar. Do not include quotes, equals signs, or other special characters that aren't part of the actual translation. No explanations or additional context.";
         }
         else
